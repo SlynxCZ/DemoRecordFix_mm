@@ -29,12 +29,6 @@ PLUGIN_EXPOSE(Plugin, g_Plugin);
 
 bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
-    if (late)
-    {
-        std::snprintf(error, maxlen, "Late load is not supported");
-        return false;
-    }
-
     PLUGIN_SAVEVARS();
 
     GET_V_IFACE_ANY(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
