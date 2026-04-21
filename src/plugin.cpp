@@ -31,41 +31,16 @@ PLUGIN_EXPOSE(Plugin, g_Plugin);
 
 CMemPatch m_HammerPatch{"SetSchemaHammerUniqueId"};
 
-class GameSessionConfiguration_t
-{
-};
-
-SH_DECL_HOOK3_void(INetworkServerService, StartupServer, SH_NOATTRIB, 0, const GameSessionConfiguration_t&, ISource2WorldSession*, const char*);
-
 bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
     PLUGIN_SAVEVARS();
 
-    GET_V_IFACE_CURRENT(GetEngineFactory, g_pNetworkServerService, INetworkServerService, NETWORKSERVERSERVICE_INTERFACE_VERSION);
     GET_V_IFACE_CURRENT(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
 
-    m_iStartupServerHookID = SH_ADD_HOOK(INetworkServerService, StartupServer, g_pNetworkServerService, SH_MEMBER(this, &Plugin::INetworkServerService_StartupServer), true);
-
-    return true;
-}
-
-bool Plugin::Unload(char* error, size_t maxlen)
-{
-    SH_REMOVE_HOOK_ID(m_iStartupServerHookID);
-
-    return true;
-}
-
-void Plugin::INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*,
-    const char*)
-{
     CModule libserver(g_pSource2Server);
 
     // https://github.com/Source2ZE/CS2Fixes/commit/61937f78dd649ed391f6988b0c58ae4a75fd4bc6
     {
-        CModule libserver(g_pSource2Server);
-
-
         static uint8_t patch[] = { 0xEB };
 
         if (!m_HammerPatch.PerformPatch(libserver.FindPattern(ParseStringPattern(WIN_LINUX("75 ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05", "75 ? 48 8B 03 48 8D 15 ? ? ? ? 48 8B 80 ? ? ? ? 48 39 D0 75 ? 48 83 C4"))), patch, sizeof(patch), 0))
@@ -77,11 +52,8 @@ void Plugin::INetworkServerService_StartupServer(const GameSessionConfiguration_
             META_LOG(this, "SetSchemaHammerUniqueId patched (jnz -> jmp)\n");
         }
     }
-}
 
-CGameEntitySystem* GameEntitySystem()
-{
-    return nullptr;
+    return true;
 }
 
 ///////////////////////////////////////

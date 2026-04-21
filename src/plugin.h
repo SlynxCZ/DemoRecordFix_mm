@@ -11,7 +11,6 @@ class Plugin final : public ISmmPlugin
 {
 public:
 	bool Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late) override;
-	bool Unload(char* error, size_t maxlen) override;
 	
 private:
 	const char* GetAuthor() override;
@@ -22,11 +21,6 @@ private:
 	const char* GetVersion() override;
 	const char* GetDate() override;
 	const char* GetLogTag() override;
-
-private: // Hooks
-	void INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*, const char*);
-
-	int m_iStartupServerHookID;
 };
 
 extern Plugin g_Plugin;
