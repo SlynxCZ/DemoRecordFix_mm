@@ -15,8 +15,19 @@ for sdk_target in MMSPlugin.sdk_targets:
   binary = MMSPlugin.HL2Library(builder, cxx, MMSPlugin.plugin_name, sdk)
 
   binary.sources += [
+    os.path.join('src', 'mempatch.cpp'),
     os.path.join('src', 'plugin.cpp'),
   ]
+
+  # Platform-specifics
+  if cxx.target.platform == 'linux':
+    binary.sources += [
+      os.path.join('src', 'plat_unix.cpp'),
+    ]
+  elif cxx.target.platform == 'windows':
+    binary.sources += [
+      os.path.join('src', 'plat_win.cpp'),
+    ]
 
   binary.sources += [
     os.path.join('vendor', 'dynlibutils', 'src', 'module.cpp')

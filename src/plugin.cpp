@@ -3,6 +3,7 @@
 #include "plugin.h"
 #include "utils.hpp"
 
+#include "mempatch.h"
 #include "macros.h"
 #include "memaddr.hpp"
 #include "module.hpp"
@@ -28,6 +29,8 @@ using namespace DynLibUtils;
 Plugin g_Plugin;
 PLUGIN_EXPOSE(Plugin, g_Plugin);
 
+CMemPatch m_HammerPatch{"SetSchemaHammerUniqueId"};
+
 class GameSessionConfiguration_t
 {
 };
@@ -50,12 +53,6 @@ bool Plugin::Unload(char* error, size_t maxlen)
 {
     SH_REMOVE_HOOK_ID(m_iStartupServerHookID);
 
-    if (m_bPatched && m_pPatchAddr)
-    {
-        VirtualUnprotector unprotect(m_pPatchAddr, 1);
-        *m_pPatchAddr = m_OriginalByte;
-    }
-
     return true;
 }
 
@@ -66,28 +63,19 @@ void Plugin::INetworkServerService_StartupServer(const GameSessionConfiguration_
 
     // https://github.com/Source2ZE/CS2Fixes/commit/61937f78dd649ed391f6988b0c58ae4a75fd4bc6
     {
-        CMemory pSetSchemaHammerUniqueId = libserver.FindPattern(ParseStringPattern(WIN_LINUX("75 ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05", "75 ? 48 8B 03 48 8D 15 ? ? ? ? 48 8B 80 ? ? ? ? 48 39 D0 75 ? 48 83 C4")));
-        if (!pSetSchemaHammerUniqueId)
+        CModule libserver(g_pSource2Server);
+
+
+        static uint8_t patch[] = { 0xEB };
+
+        if (!m_HammerPatch.PerformPatch(libserver.FindPattern(ParseStringPattern(WIN_LINUX("75 ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05", "75 ? 48 8B 03 48 8D 15 ? ? ? ? 48 8B 80 ? ? ? ? 48 39 D0 75 ? 48 83 C4"))), patch, sizeof(patch), 0))
         {
-            META_LOG(this, "Failed to find 'SetSchemaHammerUniqueId'.\n");
-            RETURN_META(MRES_IGNORED);
+            META_LOG(this, "Failed to apply SetSchemaHammerUniqueId patch\n");
         }
-
-        uint8_t* p = pSetSchemaHammerUniqueId.RCast<uint8_t*>();
-        if (*p != 0x75)
+        else
         {
-            META_LOG(this, "Unexpected opcode at SetSchemaHammerUniqueId (expected 0x75, got 0x%02X).\n", *p);
-            RETURN_META(MRES_IGNORED);
+            META_LOG(this, "SetSchemaHammerUniqueId patched (jnz -> jmp)\n");
         }
-
-        m_pPatchAddr = p;
-        m_OriginalByte = *p;
-
-        VirtualUnprotector unprotect(p, 1);
-        *p = 0xEB;
-
-        m_bPatched = true;
-        META_LOG(this, "SetSchemaHammerUniqueId patch successful.\n");
     }
 }
 

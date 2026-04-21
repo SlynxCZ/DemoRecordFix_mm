@@ -27,11 +27,10 @@ private: // Hooks
 	void INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*, const char*);
 
 	int m_iStartupServerHookID;
-
-private: // Patches
-	uint8_t* m_pPatchAddr = nullptr;
-	uint8_t m_OriginalByte = 0;
-	bool m_bPatched = false;
 };
+
+extern Plugin g_Plugin;
+
+PLUGIN_GLOBALVARS();
 
 #endif // _INCLUDE_HAMMER_ID_FIX_PLUGIN_SLYNX_H_
