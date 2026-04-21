@@ -5,7 +5,6 @@
 #endif
 
 #include "inetchannel.h"
-#include "safetyhook.hpp"
 #include "ISmmPlugin.h"
 
 class Plugin final : public ISmmPlugin, public IMetamodListener
