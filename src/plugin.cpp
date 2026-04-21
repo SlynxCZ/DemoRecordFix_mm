@@ -1,6 +1,7 @@
 ﻿// Author: Michal Přikryl (Slynx) <github.com/SlynxCZ>
 
 #include "plugin.h"
+#include "utils.hpp"
 
 #include "macros.h"
 #include "memaddr.hpp"
@@ -8,9 +9,9 @@
 #include "virtual.hpp"
 #include "vthook.hpp"
 
-#include "utils.hpp"
 #include "eiface.h"
 #include "interfaces/interfaces.h"
+#include "entitysystem.h"
 
 #include <cstdint>
 #include <sstream>
@@ -77,6 +78,11 @@ bool Plugin::Unload(char* error, size_t maxlen)
     }
 
     return true;
+}
+
+CGameEntitySystem* GameEntitySystem()
+{
+    return nullptr;
 }
 
 ///////////////////////////////////////
