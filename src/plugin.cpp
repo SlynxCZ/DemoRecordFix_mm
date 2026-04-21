@@ -56,10 +56,24 @@ bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool l
             return false;
         }
 
-        uint8_t patch = 0xEB;
+        m_pPatchAddr = p;
+        m_OriginalByte = *p;
 
         VirtualUnprotector unprotect(p, 1);
-        *p = patch;
+        *p = 0xEB;
+
+        m_bPatched = true;
+    }
+
+    return true;
+}
+
+bool Plugin::Unload(char* error, size_t maxlen)
+{
+    if (m_bPatched && m_pPatchAddr)
+    {
+        VirtualUnprotector unprotect(m_pPatchAddr, 1);
+        *m_pPatchAddr = m_OriginalByte;
     }
 
     return true;

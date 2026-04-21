@@ -7,7 +7,7 @@
 #include "inetchannel.h"
 #include "ISmmPlugin.h"
 
-class Plugin final : public ISmmPlugin, public IMetamodListener
+class Plugin final : public ISmmPlugin
 {
 public:
 	bool Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late) override;
@@ -23,8 +23,10 @@ private:
 	const char* GetDate() override;
 	const char* GetLogTag() override;
 
-private: // Hooks
-
+private: // Patches
+	uint8_t* m_pPatchAddr = nullptr;
+	uint8_t m_OriginalByte = 0;
+	bool m_bPatched = false;
 };
 
 #endif // _INCLUDE_HAMMER_ID_FIX_PLUGIN_SLYNX_H_
