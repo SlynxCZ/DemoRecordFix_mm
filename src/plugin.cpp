@@ -10,6 +10,7 @@
 #include "vthook.hpp"
 
 #include "eiface.h"
+#include "iserver.h"
 #include "interfaces/interfaces.h"
 #include "entitysystem.h"
 
@@ -27,12 +28,40 @@ using namespace DynLibUtils;
 Plugin g_Plugin;
 PLUGIN_EXPOSE(Plugin, g_Plugin);
 
+class GameSessionConfiguration_t
+{
+};
+
+SH_DECL_HOOK3_void(INetworkServerService, StartupServer, SH_NOATTRIB, 0, const GameSessionConfiguration_t&, ISource2WorldSession*, const char*);
+
 bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
     PLUGIN_SAVEVARS();
 
-    GET_V_IFACE_ANY(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
+    GET_V_IFACE_CURRENT(GetEngineFactory, g_pNetworkServerService, INetworkServerService, NETWORKSERVERSERVICE_INTERFACE_VERSION);
+    GET_V_IFACE_CURRENT(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
 
+    m_iStartupServerHookID = SH_ADD_HOOK(INetworkServerService, StartupServer, g_pNetworkServerService, SH_MEMBER(this, &Plugin::INetworkServerService_StartupServer), true);
+
+    return true;
+}
+
+bool Plugin::Unload(char* error, size_t maxlen)
+{
+    SH_REMOVE_HOOK_ID(m_iStartupServerHookID);
+
+    if (m_bPatched && m_pPatchAddr)
+    {
+        VirtualUnprotector unprotect(m_pPatchAddr, 1);
+        *m_pPatchAddr = m_OriginalByte;
+    }
+
+    return true;
+}
+
+void Plugin::INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*,
+    const char*)
+{
     CModule libserver(g_pSource2Server);
 
     // https://github.com/Source2ZE/CS2Fixes/commit/61937f78dd649ed391f6988b0c58ae4a75fd4bc6
@@ -40,15 +69,15 @@ bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool l
         CMemory pSetSchemaHammerUniqueId = libserver.FindPattern(ParseStringPattern(WIN_LINUX("75 ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05", "75 ? 48 8B 03 48 8D 15 ? ? ? ? 48 8B 80 ? ? ? ? 48 39 D0 75 ? 48 83 C4")));
         if (!pSetSchemaHammerUniqueId)
         {
-            std::snprintf(error, maxlen, "Failed to find SetSchemaHammerUniqueId");
-            return false;
+            META_LOG(this, "Failed to find 'SetSchemaHammerUniqueId'.\n");
+            RETURN_META(MRES_IGNORED);
         }
 
         uint8_t* p = pSetSchemaHammerUniqueId.RCast<uint8_t*>();
         if (*p != 0x75)
         {
-            std::snprintf(error, maxlen, "Unexpected opcode at SetSchemaHammerUniqueId (expected 0x75, got 0x%02X)", *p);
-            return false;
+            META_LOG(this, "Unexpected opcode at SetSchemaHammerUniqueId (expected 0x75, got 0x%02X).\n", *p);
+            RETURN_META(MRES_IGNORED);
         }
 
         m_pPatchAddr = p;
@@ -58,20 +87,8 @@ bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool l
         *p = 0xEB;
 
         m_bPatched = true;
+        META_LOG(this, "SetSchemaHammerUniqueId patch successful.\n");
     }
-
-    return true;
-}
-
-bool Plugin::Unload(char* error, size_t maxlen)
-{
-    if (m_bPatched && m_pPatchAddr)
-    {
-        VirtualUnprotector unprotect(m_pPatchAddr, 1);
-        *m_pPatchAddr = m_OriginalByte;
-    }
-
-    return true;
 }
 
 CGameEntitySystem* GameEntitySystem()

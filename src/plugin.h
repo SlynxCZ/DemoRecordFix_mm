@@ -23,6 +23,11 @@ private:
 	const char* GetDate() override;
 	const char* GetLogTag() override;
 
+private: // Hooks
+	void INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*, const char*);
+
+	int m_iStartupServerHookID;
+
 private: // Patches
 	uint8_t* m_pPatchAddr = nullptr;
 	uint8_t m_OriginalByte = 0;
