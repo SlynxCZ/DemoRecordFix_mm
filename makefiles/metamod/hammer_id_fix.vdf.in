@@ -1,0 +1,5 @@
+"Metamod Plugin"
+{
+	"alias"	"hammer_id_fix"
+	"file"	"addons/hammer_id_fix/bin/${PROJECT_VDF_PLATFORM}/hammer_id_fix"
+}
