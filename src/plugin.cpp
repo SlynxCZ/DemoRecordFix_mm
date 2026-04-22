@@ -36,6 +36,7 @@ bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool l
     PLUGIN_SAVEVARS();
 
     GET_V_IFACE_CURRENT(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
+    GET_V_IFACE_CURRENT(GetEngineFactory, g_pGameResourceServiceServer, IGameResourceService, GAMERESOURCESERVICESERVER_INTERFACE_VERSION);
 
     CModule libserver(g_pSource2Server);
 
@@ -54,6 +55,15 @@ bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool l
     }
 
     return true;
+}
+
+///////////////////////////////////////
+
+CGameEntitySystem* GameEntitySystem()
+{
+    // CGameResourceService::SetEntityResourceManifest
+    // str server_entities
+    return *reinterpret_cast<CGameEntitySystem**>(reinterpret_cast<uintptr_t>(g_pGameResourceServiceServer) + WIN_LINUX(0x58, 0x50));
 }
 
 ///////////////////////////////////////
