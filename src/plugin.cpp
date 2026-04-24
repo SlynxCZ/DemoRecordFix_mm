@@ -89,7 +89,7 @@ const char* Plugin::GetLogTag()
 
 const char* Plugin::GetAuthor()
 {
-    return "Slynx";
+    return "Slynx (˙·٠● S l y n x ●٠·˙)";
 }
 
 const char* Plugin::GetDescription()
