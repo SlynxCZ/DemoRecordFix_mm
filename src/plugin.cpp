@@ -63,7 +63,7 @@ CGameEntitySystem* GameEntitySystem()
 {
     // CGameResourceService::SetEntityResourceManifest
     // str server_entities
-    return *reinterpret_cast<CGameEntitySystem**>(reinterpret_cast<uintptr_t>(g_pGameResourceServiceServer) + WIN_LINUX(0x58, 0x50));
+    return *CMemory(g_pGameResourceServiceServer).Offset(WIN_LINUX(0x58, 0x50)).RCast<CGameEntitySystem**>();
 }
 
 ///////////////////////////////////////
