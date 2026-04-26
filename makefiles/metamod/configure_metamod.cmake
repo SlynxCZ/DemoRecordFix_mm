@@ -5,6 +5,6 @@ else()
 endif()
 
 configure_file(
-		${CMAKE_CURRENT_LIST_DIR}/hammer_id_fix.vdf.in
-	${PROJECT_SOURCE_DIR}/configs/addons/metamod/hammer_id_fix.vdf
+		${CMAKE_CURRENT_LIST_DIR}/demo_record_fix.vdf.in
+	${PROJECT_SOURCE_DIR}/configs/addons/metamod/demo_record_fix.vdf
 )

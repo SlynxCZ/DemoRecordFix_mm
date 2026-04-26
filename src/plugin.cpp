@@ -3,12 +3,10 @@
 #include "plugin.h"
 #include "utils.hpp"
 
-#include "mempatch.h"
-#include "macros.h"
 #include "memaddr.hpp"
 #include "module.hpp"
-#include "virtual.hpp"
-#include "vthook.hpp"
+
+#include "sdk/CServerSideClient.h"
 
 #include "eiface.h"
 #include "iserver.h"
@@ -29,32 +27,74 @@ using namespace DynLibUtils;
 Plugin g_Plugin;
 PLUGIN_EXPOSE(Plugin, g_Plugin);
 
-CMemPatch m_HammerPatch{"SetSchemaHammerUniqueId"};
+ConVarRefAbstract* g_TvEnable = nullptr;
+
+struct GameSessionConfiguration_t {
+public:
+    char pad[0x64]; // 0x0
+    int maxPlayers; // 0x64
+};
+
+SH_DECL_HOOK2_void(CServerSideClient, Disconnect, SH_NOATTRIB, 0, ENetworkDisconnectionReason, const char*);
+SH_DECL_HOOK3_void(INetworkServerService, StartupServer, SH_NOATTRIB, 0, const GameSessionConfiguration_t&, ISource2WorldSession*, const char*);
 
 bool Plugin::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
     PLUGIN_SAVEVARS();
 
-    GET_V_IFACE_CURRENT(GetServerFactory, g_pSource2Server, ISource2Server, INTERFACEVERSION_SERVERGAMEDLL);
-    GET_V_IFACE_CURRENT(GetEngineFactory, g_pGameResourceServiceServer, IGameResourceService, GAMERESOURCESERVICESERVER_INTERFACE_VERSION);
+    GET_V_IFACE_CURRENT(GetEngineFactory, g_pCVar, ICvar, CVAR_INTERFACE_VERSION);
+    GET_V_IFACE_CURRENT(GetEngineFactory, g_pEngineServer, IVEngineServer, INTERFACEVERSION_VENGINESERVER);
+    GET_V_IFACE_CURRENT(GetEngineFactory, g_pNetworkServerService, INetworkServerService, NETWORKSERVERSERVICE_INTERFACE_VERSION);
 
-    CModule libserver(g_pSource2Server);
+    g_TvEnable = new ConVarRefAbstract("tv_enable");
 
-    // https://github.com/Source2ZE/CS2Fixes/commit/61937f78dd649ed391f6988b0c58ae4a75fd4bc6
+    CModule libengine(g_pEngineServer);
+
+    // VirtualTable Hooks
     {
-        static uint8_t patch[] = { 0xEB };
+        CMemory pCServerSideClientVTable = libengine.GetVirtualTableByName("CServerSideClient");
 
-        if (!m_HammerPatch.PerformPatch(libserver.FindPattern(ParseStringPattern(WIN_LINUX("75 ? 48 8B 03 48 8B CB FF 90 ? ? ? ? 84 C0 74 ? 48 8D 05", "75 ? 48 8B 03 48 8D 15 ? ? ? ? 48 8B 80 ? ? ? ? 48 39 D0 75 ? 48 83 C4"))), patch, sizeof(patch), 0))
-        {
-            META_LOG(this, "Failed to apply SetSchemaHammerUniqueId patch\n");
-        }
-        else
-        {
-            META_LOG(this, "SetSchemaHammerUniqueId patched (jnz -> jmp)\n");
-        }
+        m_iDisconnectHookID = SH_ADD_DVPHOOK(CServerSideClient, Disconnect, pCServerSideClientVTable.RCast<CServerSideClient*>(), SH_MEMBER(this, &Plugin::CServerSideClient_Disconnect), false);
+        m_iStartupServerHookID = SH_ADD_HOOK(INetworkServerService, StartupServer, g_pNetworkServerService, SH_MEMBER(this, &Plugin::INetworkServerService_StartupServer), false);
     }
 
+    g_SMAPI->AddListener(this, this);
+
+    ConVar_Register(FCVAR_RELEASE | FCVAR_CLIENT_CAN_EXECUTE | FCVAR_GAMEDLL);
+
     return true;
+}
+
+bool Plugin::Unload(char* error, size_t maxlen)
+{
+    SH_REMOVE_HOOK_ID(m_iDisconnectHookID);
+    SH_REMOVE_HOOK_ID(m_iStartupServerHookID);
+
+    return true;
+}
+
+void Plugin::CServerSideClient_Disconnect(ENetworkDisconnectionReason reason, const char* pszInternalReason)
+{
+    CServerSideClient* pClient = META_IFACEPTR(CServerSideClient);
+    if (pClient->m_bIsHLTV && g_TvEnable && g_TvEnable->GetBool())
+    {
+        META_LOG(this, "GOTV is enabled, blocking CServerSideClient disconnect\n");
+
+        RETURN_META(MRES_SUPERCEDE);
+    }
+
+    RETURN_META(MRES_IGNORED);
+}
+
+void Plugin::INetworkServerService_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession* session, const char*)
+{
+    if (g_TvEnable && g_TvEnable->GetBool())
+    {
+        META_LOG(this, "GOTV is enabled, expanding game session maxplayers (%i -> %i)\n", config.maxPlayers, config.maxPlayers + 1);
+        const_cast<GameSessionConfiguration_t&>(config).maxPlayers++;
+    }
+
+    RETURN_META(MRES_IGNORED);
 }
 
 ///////////////////////////////////////
@@ -84,7 +124,7 @@ const char* Plugin::GetDate()
 
 const char* Plugin::GetLogTag()
 {
-    return "HammerIdFix";
+    return "DemoRecordFix";
 }
 
 const char* Plugin::GetAuthor()
@@ -94,12 +134,12 @@ const char* Plugin::GetAuthor()
 
 const char* Plugin::GetDescription()
 {
-    return "Hammer id fix";
+    return "Demo record fix";
 }
 
 const char* Plugin::GetName()
 {
-    return "Hammer id fix";
+    return "Demo record fix";
 }
 
 const char* Plugin::GetURL()

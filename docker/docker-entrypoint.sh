@@ -52,6 +52,5 @@ python ../configure.py \
   --hl2sdk-root=$HL2SDKCS2 \
   --hl2sdk-manifests=$MMSOURCE_DEV/hl2sdk-manifests
 ambuild
-find package -name "*.so" -exec strip --strip-unneeded {} \;
 
 echo "=== DONE ==="
