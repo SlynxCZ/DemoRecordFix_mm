@@ -28,5 +28,5 @@
 
 ## Author
 
-Slynx
+Slynx (˙·٠● S l y n x ●٠·˙)
 [https://slynxdev.cz](https://slynxdev.cz)
