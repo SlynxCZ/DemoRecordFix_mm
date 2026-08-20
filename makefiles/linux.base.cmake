@@ -29,5 +29,6 @@ set(LINK_LIBRARIES
     ${SOURCESDK_LIB}/linux64/interfaces.a
     ${SOURCESDK_LIB}/linux64/mathlib.a
     Protobufs
+    dynlibutils
     sourcehook
 )
